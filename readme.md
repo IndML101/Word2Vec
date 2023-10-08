@@ -47,9 +47,7 @@ $$
 \underset{\theta}{\text{maximize}} \frac{1}{T} \sum_{t=1}^{T} \sum_{-c \le j \le c,j\ne0} \log p(w_{t+j} | w_t)
 $$
 
-$$
-p(w_O | w_I) = \frac{exp({v'_{w_O}}^T v_{w_I})}{\sum_{w=1}^{W} exp(v'_w v_{w_I})}
-$$
+$$p(w_O | w_I) = \frac{exp({v'_{w_O}}^T v_{w_I})}{\sum_{w=1}^{W} exp(v'_w v_{w_I})}$$
 
 Skip-gram uses softmax to compute probability of words using softmax function which is very inefficient. Negative sampling reduces this computation by updating the objective funtion. 
 
