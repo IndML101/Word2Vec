@@ -111,7 +111,7 @@ class Word2Vec:
                 loss.backward()
                 self.optimizer.step()
 
-                running_loss.append(loss.item())
+                running_loss.append(round(loss.item(), 5))
                 
                 if not step % loss_history:
                     mean_step_loss = np.mean(running_loss)
