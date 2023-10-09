@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title></title>
+    <link rel="stylesheet" href="dist/reveal.css" />
+    <link rel="stylesheet" href="dist/theme/serif.css" id="theme" />
+    <link rel="stylesheet" href="plugin/highlight/zenburn.css" />
+	<link rel="stylesheet" href="css/layout.css" />
+	<link rel="stylesheet" href="plugin/customcontrols/style.css">
+
+	<link rel="stylesheet" href="plugin/reveal-pointer/pointer.css" />
+
+
+    <script defer src="dist/fontawesome/all.min.js"></script>
+
+	<script type="text/javascript">
+		var forgetPop = true;
+		function onPopState(event) {
+			if(forgetPop){
+				forgetPop = false;
+			} else {
+				parent.postMessage(event.target.location.href, "app://obsidian.md");
+			}
+        }
+		window.onpopstate = onPopState;
+		window.onmessage = event => {
+			if(event.data == "reload"){
+				window.document.location.reload();
+			}
+			forgetPop = true;
+		}
+
+		function fitElements(){
+			const itemsToFit = document.getElementsByClassName('fitText');
+			for (const item in itemsToFit) {
+				if (Object.hasOwnProperty.call(itemsToFit, item)) {
+					var element = itemsToFit[item];
+					fitElement(element,1, 1000);
+					element.classList.remove('fitText');
+				}
+			}
+		}
+
+		function fitElement(element, start, end){
+
+			let size = (end + start) / 2;
+			element.style.fontSize = `${size}px`;
+
+			if(Math.abs(start - end) < 1){
+				while(element.scrollHeight > element.offsetHeight){
+					size--;
+					element.style.fontSize = `${size}px`;
+				}
+				return;
+			}
+
+			if(element.scrollHeight > element.offsetHeight){
+				fitElement(element, start, size);
+			} else {
+				fitElement(element, size, end);
+			}		
+		}
+
+
+		document.onreadystatechange = () => {
+			fitElements();
+			if (document.readyState === 'complete') {
+				if (window.location.href.indexOf("?export") != -1){
+					parent.postMessage(event.target.location.href, "app://obsidian.md");
+				}
+				if (window.location.href.indexOf("print-pdf") != -1){
+					let stateCheck = setInterval(() => {
+						clearInterval(stateCheck);
+						window.print();
+					}, 250);
+				}
+			}
+	};
+
+
+        </script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides"><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Learning Distributed Representation of Words
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Contents
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+
+<div>
+	<ul>
+		<li>Introduction</li>
+		<li>Continuous bag of words</li>
+		<li>Skip-gram</li>
+		<li>Hierarchical softmax</li>
+		<li>Negative sampling</li>
+		<li>Sub sampling of frequent words</li>
+		<li>Data</li>
+		<li>Model</li>
+		<li>Results</li>
+		<li>Discussion</li>
+	</ul>
+</div>
+<!-- .element: style="width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" align="left" -->
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Continuous bag of words
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Task
+
+</div>
+</div>
+<div class="callout-content">
+
+Predict `$nth$` word for given previous `$n-1$` words. Training data will be all `$n-$`word in our corpus. This problem was modeled as _multi-class classification_ problem. Input will be one-hot encoded `$n-1$` words and output will one-hot encoded `$nth$` word. Challenge being computation of _softmax_ function.
+
+</div>
+</div>
+</div>
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Objective function 
+
+</div>
+</div>
+<div class="callout-content">
+
+`$L(\theta) = -\log(\hat{y}_{w)}= -\log P(w|c)$`
+
+`$\hat{y}_{w} = \frac{exp(u_c. v_w)}{\sum_{w' \in W} exp(u_c . v_w)}$`
+
+`$u_{c} = W_{context} . x_c$`
+
+`$v_{w}$` is column of `$W_{word}$`
+
+</div>
+</div>
+</div>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Skip-gram
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Task
+
+</div>
+</div>
+<div class="callout-content">
+
+Here the task is just the opposite of the [Continuous bag of words](#2). We predict the _context_ words given an _input_ word. Typically the _context_ words are on the both sides of _input_ word. Challenge being same _softmax_ computation.
+
+</div>
+</div>
+</div>
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Objective function 
+
+</div>
+</div>
+<div class="callout-content">
+
+`$\underset{\theta}{\text{maximize}} \frac{1}{T} \sum_{t=1}^{T} \sum_{-c \le j \le c,j\ne0} \log p(w_{t+j} | w_t)$`
+
+`$p(w_O | w_I) = \frac{exp({v'_{w_O}}v_{w_I})}{\sum_{w=1}^{W} exp(v'_w v_{w_I})}$`
+
+</div>
+</div>
+</div>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+Extension of Skip-gram model
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Hierarchical softmax
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Task
+
+</div>
+</div>
+<div class="callout-content">
+
+It is a extension of [Skip-gram](#3) model where instead of evaluating `$W$` nodes only `$\log_{2}W$` nodes are evaluated, by constructing a binary tree representation of the output layer with `$|W|$` leaf nodes. Each node represents relative probabilities of its child nodes.
+
+</div>
+</div>
+</div>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Negative sampling
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Task
+
+</div>
+</div>
+<div class="callout-content">
+
+Negative sampling is another extension of [Skip-gram](#3) to solve the problem associated with slow computation of _softmax_ function. The Idea is to approximate the probability of the _softmax_ by making model to learn to differentiate between noise and context words.
+
+</div>
+</div>
+</div>
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Objective function 
+
+</div>
+</div>
+<div class="callout-content">
+
+`$\underset{\theta}{\text{maximize}} \sum_{(w,c) \in D} \log \sigma(v_c^Tv_w) + \sum_{(w,r) \in D'} \log \sigma(-v_r^Tv_w)$`
+
+`$\sigma(x) = \frac{1}{1+e^{-x}}$`
+
+</div>
+</div>
+</div>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Sub sampling frequent words
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+<div class="" style="font-size: 20px" drag="30 30">
+
+<div class="callout callout-color8">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-list" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Task
+
+</div>
+</div>
+<div class="callout-content">
+
+It is another extension of [Skip-gram](#3) to solve the problem associated with slow computation of _softmax_ function. The Idea is to sub sample the frequently seen words like "a", "of", "the" etc. to treat the imbalance in the co-occurrence of rare and frequent words. It accelerates the learning and improves the accuracy of the rare words
+
+</div>
+</div>
+</div>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Model
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+<div>
+<p style= "font-size:20px;">
+The objective of this assignment is to learn distributed word representations that capture syntactic and semantic relation between them, using <span style='font-weight:bold';>Skip-gram with negative sampling</span>, published in <span style="font-weight:italic">Mikolov et. al.</span>  
+</p>
+</div>
+<!-- .element: style="width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" align="left" -->
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Results
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+<pre>
+{
+'When': ['doing.', 'bookshelf.', 'acorns', 'car,"', 'stumble'],
+'diamond.': ['are."', 'cobweb', 'side!"', 'day."', 'day:'],
+'disgusting!': ['word.', 'appreciated', 'Leave', 'Pinchy', 'hole!"'],
+'fireplace.': ['band.', 'brave', 'jewel', 'flown', 'teeth,'],
+'fruits': ['tree,', '"Thanks', 'paint.', 'shelf.', 'calling'],
+'insect.': ['Pandy.', 'secrets.', 'recommended', 'problems.Once', 'high!"'],
+'know!': ['elephant,', 'shadow.', 'back!', 'rough.', 'muffin.'],
+'lungs': ['snake!', 'needle', 'park.Once', 'white', '"Yuck!"'],
+'notes': ['ones,', 'Ash', 'tired.Once', 'organized', 'pumpkins'],
+'please!': ['part', 'mine!"', 'knot.', 'farm.Once', 'garden,']
+ }
+</pre>
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 700px; width: 960px; min-height: 700px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+<div class="callout callout-color-default">
+<div class="callout-title">
+<div class="callout-icon">
+
+<i class="fas fa-pencil-alt" ></i>
+
+
+</div>
+<div class="callout-title-inner">
+
+Discussion 
+
+</div>
+</div>
+<div class="callout-content">
+
+</div>
+</div>
+<!-- .element: style="width: 100%; background-color: teal; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" class="has-dark-background" align="left" -->
+
+<div>
+<p style= "font-size:25px">
+	Some of the similar words are found for a given word for example "diamond" and "cobwed" seems to be related other than that "fruits" and "tree" is one more example but most of these words were expected to show more semantic similarity. There are several reasons potentially associated with it like the small vocab size, number of epochs, small embedding dimension etc. We need to play around with these parameters a bit to get better results. Data pre-processing can be another reason for sub par performance which was skipped due to paucity of time.
+</p>
+</div>
+<!-- .element: style="width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-evenly" align="left" -->
+</div></script></section></div>
+    </div>
+
+    <script src="dist/reveal.js"></script>
+
+    <script src="plugin/markdown/markdown.js"></script>
+    <script src="plugin/highlight/highlight.js"></script>
+    <script src="plugin/zoom/zoom.js"></script>
+    <script src="plugin/notes/notes.js"></script>
+    <script src="plugin/math/math.js"></script>
+	<script src="plugin/mermaid/mermaid.js"></script>
+	<script src="plugin/chart/chart.min.js"></script>
+	<script src="plugin/chart/plugin.js"></script>
+	<script src="plugin/menu/menu.js"></script>
+	<script src="plugin/customcontrols/plugin.js"></script>
+	<script src="plugin/reveal-pointer/pointer.js"></script>
+
+    <script>
+      function extend() {
+        var target = {};
+        for (var i = 0; i < arguments.length; i++) {
+          var source = arguments[i];
+          for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+              target[key] = source[key];
+            }
+          }
+        }
+        return target;
+      }
+
+	  function isLight(color) {
+		let hex = color.replace('#', '');
+
+		// convert #fff => #ffffff
+		if(hex.length == 3){
+			hex = `${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+		}
+
+		const c_r = parseInt(hex.substr(0, 2), 16);
+		const c_g = parseInt(hex.substr(2, 2), 16);
+		const c_b = parseInt(hex.substr(4, 2), 16);
+		const brightness = ((c_r * 299) + (c_g * 587) + (c_b * 114)) / 1000;
+		return brightness > 155;
+	}
+
+	var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--r-background-color').trim();
+	var isLight = isLight(bgColor);
+
+	if(isLight){
+		document.body.classList.add('has-light-background');
+	} else {
+		document.body.classList.add('has-dark-background');
+	}
+
+      // default options to init reveal.js
+      var defaultOptions = {
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+        transition: 'default', // none/fade/slide/convex/concave/zoom
+        plugins: [
+          RevealMarkdown,
+          RevealHighlight,
+          RevealZoom,
+          RevealNotes,
+          RevealMath.MathJax3,
+		  RevealMermaid,
+		  RevealChart,
+		  RevealCustomControls,
+		  RevealMenu,
+	      RevealPointer,
+        ],
+
+
+    	allottedTime: 120 * 1000,
+
+		mathjax3: {
+			mathjax: 'plugin/math/mathjax/tex-mml-chtml.js',
+		},
+		markdown: {
+		  gfm: true,
+		  mangle: true,
+		  pedantic: false,
+		  smartLists: false,
+		  smartypants: false,
+		},
+
+		mermaid: {
+			theme: isLight ? 'default' : 'dark',
+		},
+
+		customcontrols: {
+			controls: [
+				{id: 'toggle-overview',
+				title: 'Toggle overview (O)',
+				icon: '<i class="fa fa-th"></i>',
+				action: 'Reveal.toggleOverview();'
+				},
+			]
+		},
+		menu: {
+			loadIcons: false
+		}
+      };
+
+      // options from URL query string
+      var queryOptions = Reveal().getQueryHash() || {};
+
+      var options = extend(defaultOptions, {"width":960,"height":700,"margin":0.04,"controls":true,"progress":true,"slideNumber":true,"transition":"slide","transitionSpeed":"default"}, queryOptions);
+    </script>
+
+    <script>
+      Reveal.initialize(options);
+    </script>
+  </body>
+
+  <!-- created with Advanced Slides -->
+</html>
